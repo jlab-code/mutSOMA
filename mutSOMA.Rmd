@@ -1,0 +1,69 @@
+---
+title: "mutSOMA"
+output:
+  pdf_document: default
+  html_document: default
+geometry: margin=0.5in 
+mainfont: Arial
+fontsize: 8pt
+---
+
+```{r, include=FALSE}
+library(Biostrings)
+library(vcfR)
+library(expm)
+library(optimx)
+```
+
+```{r, echo=FALSE}
+## Setting file pathways
+input.data.dir <- "/Users/rashmi/Desktop/Rmarkdown/mutSOMA/RAW/"
+out.data.dir <- "/Users/rashmi/Desktop/Rmarkdown/mutSOMA/PRODUCED/"
+func.dir <- "/Users/rashmi/Desktop/Rmarkdown/mutSOMA/FUNC/"
+
+## Loading source code
+source(paste(func.dir, "makePHYLO.R", sep=""))
+source(paste(func.dir, "makeVCFpedigreeTEMP.R", sep=""))
+source(paste(func.dir, "mutSOMA.R", sep=""))
+```
+
+## 1) Loading data and determine nucleotide frequency
+
+```{r}
+## Reading in the poplar fasta file and determining the nucleotide frequency
+poplar <- readDNAStringSet(paste(input.data.dir, "PtrichocarpaStettler14_532_v1.0.fa", sep=""))
+freqBASE <- letterFrequency(poplar, letters = c("A", "C", "T", "G"), as.prob=FALSE)
+freqBASE <- colSums(freqBASE[1:19,])
+probBASE <- freqBASE/sum(freqBASE)
+
+freqBASE
+probBASE
+```
+
+## 2) Constructing pedigree
+
+```{r }        
+pedigree <- makeVCFpedigreeTEMP(genome.size=sum(freqBASE), input.dir = input.data.dir)
+pedigree<-pedigree[[1]]
+pedigree<-pedigree[-21,]
+head(pedigree)
+
+```
+
+## 3) Run models
+
+```{r}
+out <- mutSOMA(pedigree.data = pedigree, 
+             p0aa= probBASE[1],
+             p0cc= probBASE[2],
+             p0tt= probBASE[3],
+             p0gg= probBASE[4],
+             Nstarts=20,
+             out.dir = out.data.dir,
+             out.name = "test_mutSOMA")
+
+summary(out)
+head(out$estimates)
+head(out$pedigree)                     
+        
+```
